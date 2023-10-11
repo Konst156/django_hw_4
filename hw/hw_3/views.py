@@ -4,8 +4,13 @@ from .models import Order, Product, Client
 from django.shortcuts import render
 from django.utils import timezone
 from datetime import timedelta, datetime
+from . import forms
 
 logger = logging.getLogger(__name__)
+
+
+def index(request):
+    return render(request, './hw_3/index.html')
 
 
 def main(request):
@@ -76,12 +81,12 @@ def get_product_by_id(product_id):
 
 
 # Обновление информации о товаре
-def update_product(product, name, description, price, quantity):
-    product.name = name
-    product.description = description
-    product.price = price
-    product.quantity = quantity
-    product.save()
+# def update_product(product, name, description, price, quantity):
+#     product.name = name
+#     product.description = description
+#     product.price = price
+#     product.quantity = quantity
+#     product.save()
 
 
 # Удаление товара
@@ -172,3 +177,66 @@ def show_client_orders(request, pk):
         'orders': orders,
     }
     return render(request, './hw_3/show_client_orders.html', context)
+
+
+def update_product(request):
+    """Обновление товара"""
+    if request.method == 'POST':
+        form = forms.ProductUpdateForm(request.POST, request.FILES)
+        message = 'Ошибка данных'
+        if form.is_valid():
+            pk = form.cleaned_data['product_update'].pk
+            image = form.cleaned_data['product_image']
+            product_name = form.cleaned_data['product_name']
+            description = form.cleaned_data['description']
+            price = form.cleaned_data['price']
+            quantity = form.cleaned_data['quantity']
+            # работа БД
+            logger.debug(f'result: {product_name=}, {description=}, {price=}, {quantity=}, {pk=}')
+            product_update = Product.objects.filter(pk=pk).first()
+            product_update.name = product_name
+            product_update.description = description
+            product_update.price = price
+            product_update.quantity = quantity
+            product_update.date_ordered = timezone.now()
+            product_update.product_image = image
+            product_update.save()
+            message = "Товар обновлен !"
+            logger.debug(f'PRODUCT UPDATE: {product_update}')
+    else:
+        form = forms.ProductUpdateForm
+        message = "Заполните форму для для редактирования товара:"
+    return render(request, './hw_3/product_add.html', {'form': form, 'message': message, 'title': 'Обновить продукт'})
+
+
+def show_products(request):
+    products = Product.objects.all()
+    return render(request, './hw_3/index.html', {'products': products})
+
+
+def add_product(request):
+    """Добавление товара"""
+    if request.method == 'POST':
+        form = forms.ProductForm(request.POST, request.FILES)
+        message = 'Ошибка данных'
+        if form.is_valid():
+            image = form.cleaned_data['product_image']
+            product_name = form.cleaned_data['product_name']
+            description = form.cleaned_data['description']
+            price = form.cleaned_data['price']
+            quantity = form.cleaned_data['quantity']
+            # работа БД
+            logger.debug(f'result: {product_name=}, {description=}, {price=}, {quantity=}')
+            product = Product(name=product_name,
+                              description=description,
+                              price=price,
+                              quantity=quantity,
+                              added_date=timezone.now(),
+                              product_image=image)
+            product.save()
+            message = "Товар добавлен !"
+            logger.debug(f'PRODUCT SAVE: {product}')
+    else:
+        form = forms.ProductForm()
+        message = "Заполните форму:"
+    return render(request, './hw_3/product_add.html', {'form': form, 'message': message, 'title': 'Добавить продукт'})
